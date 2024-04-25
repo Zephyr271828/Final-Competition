@@ -7,7 +7,7 @@ import librosa.display
 
 from tqdm import tqdm
 
-def mp3_to_spectrogram(mp3_path, img_path):
+def mp3_to_img(mp3_path, img_path):
     # Load the MP3 file and extract audio data
     y, sr = librosa.load(mp3_path)
 
@@ -15,7 +15,7 @@ def mp3_to_spectrogram(mp3_path, img_path):
     spectrogram = librosa.feature.melspectrogram(y = y, sr = sr)
 
     # Plot the spectrogram
-    plt.figure(figsize = (10, 4))
+    plt.figure(figsize = (10, 10))
     librosa.display.specshow(librosa.power_to_db(spectrogram, ref = np.max))
     plt.axis('off')
 
@@ -33,5 +33,5 @@ if __name__ == '__main__':
 
         img_name = mp3_name.replace('.mp3', '.png')
         img_path = os.path.join(img_dir, img_name)
-        mp3_to_spectrogram(mp3_path, img_path)
+        mp3_to_img(mp3_path, img_path)
         
