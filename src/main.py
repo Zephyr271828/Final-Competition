@@ -11,9 +11,17 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 from models import *
-from data_utils import *
+from configurations import *
+from data_utils import load_data
 
 
 
 if __name__ == '__main__':
-    pass
+
+    print('loading datasets...')
+    train_dir = '../../data/train'
+    dev_dir = '../../data/dev'
+    
+    train_loader = load_data(train_dir)
+    dev_loader = load_data(dev_dir)
+
