@@ -24,7 +24,7 @@ def mp3_to_img(mp3_path, img_path):
     spectrogram = librosa.feature.melspectrogram(y = y, sr = sr)
 
     # Plot the spectrogram
-    plt.figure(figsize = (10, 10))
+    plt.figure(figsize = (10, 10), dpi = 100)
     librosa.display.specshow(librosa.power_to_db(spectrogram, ref = np.max))
     plt.axis('off')
 
@@ -79,7 +79,8 @@ class CustomDataset(Dataset):
         data = []
         for idx in tqdm(range(self.size)):
             img_path = os.path.join(self.img_dir, f'{idx}.png')
-            img = self.transform(Image.open(img_path).convert('RGB'))
+            img = Image.open(img_path).convert('RGB')
+            img = self.transform(img)
             if self.label_dir:
                 label = self.labels[idx]
             else:

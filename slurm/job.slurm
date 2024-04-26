@@ -5,7 +5,7 @@
 #SBATCH --error=error.err
 #SBATCH --cpus-per-task=14
 #SBATCH --mem=32GB
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=begin        
 #SBATCH --mail-type=end           

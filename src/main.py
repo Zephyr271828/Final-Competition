@@ -116,7 +116,8 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, weight_decay = weight_decay)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones = [args.epochs // 3, args.epochs * 2 // 3], gamma = 0.1, last_epoch = -1)
+    #scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones = [args.epochs // 3, args.epochs * 2 // 3], gamma = 0.1, last_epoch = -1)
+    scheduler = None
     with open('../best_acc.txt', 'r+') as f:
         best_acc = float(f.read().strip())
 
