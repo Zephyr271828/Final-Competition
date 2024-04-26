@@ -23,15 +23,23 @@ def mp3_to_img(mp3_path, img_path):
     plt.savefig(img_path, transparent = True)
     plt.close()
 
+def load_img(split):
+    mp3_dir = f'../../data/{split}_mp3s'
+    img_dir = f'../../data/{split}_imgs'
 
+    for mp3_name in tqdm(os.listdir(mp3_dir)):
+        if '._' in mp3_name:
+            mp3_path = os.path.join(mp3_dir, mp3_name)
+            os.remove(mp3_path)
 
-if __name__ == '__main__':
-    mp3_dir = '../../data/train'
-    img_dir = '../../data/imgs'
     for mp3_name in tqdm(os.listdir(mp3_dir)):
         mp3_path = os.path.join(mp3_dir, mp3_name)
 
         img_name = mp3_name.replace('.mp3', '.png')
         img_path = os.path.join(img_dir, img_name)
         mp3_to_img(mp3_path, img_path)
+
+if __name__ == '__main__':
+    load_img('test')
+    
         
