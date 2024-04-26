@@ -90,6 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type = str, default = '../../data', help = 'root directory of data')
     parser.add_argument('--batch_size', type = int, default = 16, help = 'batch_size of data loader')
     parser.add_argument('--input_size', type = int, default = 64, help = 'size of input images')
+    parser.add_argument('--train', type = bool, default = True, help = 'train the model or not')
     args = parser.parse_args()
 
     print('loading datasets...')
@@ -99,53 +100,56 @@ if __name__ == '__main__':
         transforms.ToTensor()
     ])
 
-    train_set = CustomDataset(f'{args.data_dir}/train', label = True, transform = transform)
-    train_loader = DataLoader(dataset = train_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
-    
-    dev_set = CustomDataset(f'{args.data_dir}/dev', label = True, transform = transform)
-    dev_loader = DataLoader(dataset = dev_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
+    if args.train:
+
+        train_set = CustomDataset(f'{args.data_dir}/train', label = True, transform = transform)
+        train_loader = DataLoader(dataset = train_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
+        
+        dev_set = CustomDataset(f'{args.data_dir}/dev', label = True, transform = transform)
+        dev_loader = DataLoader(dataset = dev_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
 
     test_set = CustomDataset(f'{args.data_dir}/test_imgs', label = False, transform = transform)
     test_loader = DataLoader(dataset = test_set, batch_size = args.batch_size, shuffle = False, drop_last = False)
 
-    print('loading model...')
     model = models.resnet18(weights = None, num_classes = C)
     model.conv1 = nn.Conv2d(input_ch, model.conv1.weight.shape[0], 3, 1, 1, bias = False)
     model.maxpool = nn.MaxPool2d(kernel_size = 1, stride = 1, padding = 0)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss().to(device)
-    optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, weight_decay = weight_decay)
-    #scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones = [args.epochs // 3, args.epochs * 2 // 3], gamma = 0.1, last_epoch = -1)
-    scheduler = None
-    with open('../best_acc.txt', 'r+') as f:
-        best_acc = float(f.read().strip())
+    if args.train:
+    
+        criterion = nn.CrossEntropyLoss().to(device)
+        optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, weight_decay = weight_decay)
+        scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones = [args.epochs // 3, args.epochs * 2 // 3], gamma = 0.1, last_epoch = -1)
+        #scheduler = None
+        with open('../best_acc.txt', 'r+') as f:
+            best_acc = float(f.read().strip())
 
-    for epoch in range(1, args.epochs + 1):
-        print('training for epoch {}...'.format(epoch, ))
-        model.train()
-        loss = train(model, train_loader, criterion, optimizer, device, scheduler)
+        for epoch in range(1, args.epochs + 1):
+            print('training for epoch {}...'.format(epoch, ))
+            model.train()
+            loss = train(model, train_loader, criterion, optimizer, device, scheduler)
 
-        print('evaluating for epoch {}...'.format(epoch, ))
-        model.eval()
-        train_acc = eval(model, train_loader, device, predict = False)
-        dev_acc = eval(model, dev_loader, device, predict = False)
+            print('evaluating for epoch {}...'.format(epoch, ))
+            model.eval()
+            train_acc = eval(model, train_loader, device, predict = False)
+            dev_acc = eval(model, dev_loader, device, predict = False)
 
-        print('epoch = {} | train acc = {}% | dev acc = {}%'.format(epoch, train_acc * 100, dev_acc * 100))
+            print('epoch = {} | train acc = {}% | dev acc = {}%'.format(epoch, train_acc * 100, dev_acc * 100))
 
-        if dev_acc > best_acc:
-            best_acc = dev_acc
-            with open('../best_acc.txt', 'w+') as f:
-                f.write(str(best_acc))
-            print('saving model parameters...')
-            torch.save(model.state_dict(), model_path)
+            if dev_acc > best_acc:
+                best_acc = dev_acc
+                with open('../best_acc.txt', 'w+') as f:
+                    f.write(str(best_acc))
+                print('saving model parameters...')
+                torch.save(model.state_dict(), model_path)
 
     print('generating predictions...')
-    model = models.resnet18(weights = None, num_classes = C)
-    model.conv1 = nn.Conv2d(input_ch, model.conv1.weight.shape[0], 3, 1, 1, bias = False)
-    model.maxpool = nn.MaxPool2d(kernel_size = 1, stride = 1, padding = 0)
+    # model = models.resnet18(weights = None, num_classes = C)
+    # model.conv1 = nn.Conv2d(input_ch, model.conv1.weight.shape[0], 3, 1, 1, bias = False)
+    # model.maxpool = nn.MaxPool2d(kernel_size = 1, stride = 1, padding = 0)
     model.load_state_dict(torch.load(model_path))
-    model = model.to(device)
+    # model = model.to(device)
 
     model.eval()
     acc = eval(model, test_loader, device, predict = True, file_path = '../prediction.csv')
