@@ -46,30 +46,6 @@ def init_img(mp3_dir, img_dir):
         img_path = os.path.join(img_dir, img_name)
         mp3_to_img(mp3_path, img_path)
 
-class CustomDataset(Dataset):
-    def __init__(self, img_dir, label_dir = None, transform = None):
-        self.img_dir = img_dir
-        self.size = len(os.listdir(img_dir))
-        self.transform = transform
-        self.label_dir = label_dir
-        if label_dir:
-            self.labels = [int(line.strip()) for line in open(label_dir, 'r+').readlines()]
-
-    def __len__(self):
-        return self.size
-
-    def __getitem__(self, idx):
-        if idx >= self.size:
-            raise ValueError('index out of range')
-        img_path = os.path.join(self.img_dir, f'{idx}.png')
-        img = self.transform(Image.open(img_path).convert('RGB'))
-
-        if self.label_dir:
-            label = self.labels[idx]
-        else:
-            label = None
-        return (img, label)
-
 def split_data(img_dir, label_dir, train_dir, dev_dir):
     idx = np.arange(len(os.listdir(img_dir)))
     train_idx, dev_idx = train_test_split(idx, test_size = 0.2, random_state = 42)
@@ -87,18 +63,35 @@ def split_data(img_dir, label_dir, train_dir, dev_dir):
                 img.save(new_path)
                 f.write(f'{label}\n')
 
-def load_data(data_dir):
-    dataset = CustomDataset(
-        img_dir = data_dir, 
-        label_dir = os.path.join(data_dir, 'labels.txt'), 
-        transform = transform
-    )
-    loader =  DataLoader(
-        dataset = dataset,
-        batch_size = batch_size,
-        shuffle = True
-    )
-    return loader
+class CustomDataset(Dataset):
+    def __init__(self, img_dir, label = False, transform = None):
+        self.img_dir = img_dir
+        self.size = len([file for file in os.listdir(img_dir) if file.endswith('.png')])
+        self.transform = transform
+        if label:
+            self.label_dir = os.path.join(img_dir, 'labels.txt')
+            self.labels = [int(line.strip()) for line in open(self.label_dir, 'r+').readlines()]
+        else:
+            self.label_dir = None
+        self.data = self._init_data()
+
+    def _init_data(self):
+        data = []
+        for idx in tqdm(range(self.size)):
+            img_path = os.path.join(self.img_dir, f'{idx}.png')
+            img = self.transform(Image.open(img_path).convert('RGB'))
+            if self.label_dir:
+                label = self.labels[idx]
+            else:
+                label = -1
+            data.append((img, label))
+        return data
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx):
+        return self.data[idx]
 
 if __name__ == '__main__':
     split = 'train'
@@ -117,14 +110,20 @@ if __name__ == '__main__':
     print('splitting dataset...')
     train_dir = '../../data/train'
     dev_dir = '../../data/dev'
+    test_dir = '../../data/test_imgs'
     #split_data(img_dir, label_dir, train_dir, dev_dir)
 
     print('loading datasets...')
-    train_loader = load_data(train_dir)
-    dev_loader = load_data(dev_dir)
+    train_set = CustomDataset(train_dir, label = True, transform = transform)
+    dev_set = CustomDataset(dev_dir, label = True, transform = transform)
+    test_set = CustomDataset(test_dir, label = False, transform = transform)
 
-    for idx, batch in enumerate(train_loader):
-        img, label = batch
+    train_loader = DataLoader(dataset = train_set, batch_size = batch_size, shuffle = True)
+    dev_loader = DataLoader(dataset = dev_set, batch_size = batch_size, shuffle = True)
+    test_loader = DataLoader(dataset = test_set, batch_size = batch_size, shuffle = True)
+
+    for idx, batch in enumerate(test_loader):
+        img, _ = batch
         print(img.shape)
         break
     
