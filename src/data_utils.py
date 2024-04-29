@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -15,6 +16,8 @@ from torchvision.datasets import ImageFolder
 
 from configurations import *
 
+
+np.set_printoptions(threshold=sys.maxsize)
 
 def mp3_to_img(mp3_path, img_path):
     # Load the MP3 file and extract audio data
@@ -64,9 +67,11 @@ def split_data(img_dir, label_dir, train_dir, dev_dir):
                 f.write(f'{label}\n')
 
 class CustomDataset(Dataset):
-    def __init__(self, img_dir, label = False, transform = None):
+    def __init__(self, img_dir, label = False, transform = None, debug = False, balance = 0):
         self.img_dir = img_dir
         self.size = len([file for file in os.listdir(img_dir) if file.endswith('.png')])
+        if debug:
+            self.size = min(self.size, 640)
         self.transform = transform
         if label:
             self.label_dir = os.path.join(img_dir, 'labels.txt')
@@ -74,18 +79,25 @@ class CustomDataset(Dataset):
         else:
             self.label_dir = None
         self.data = self._init_data()
+        self.balance = balance
 
     def _init_data(self):
         data = []
         for idx in tqdm(range(self.size)):
             img_path = os.path.join(self.img_dir, f'{idx}.png')
             img = Image.open(img_path).convert('RGB')
-            img = self.transform(img)
+            if self.transform:
+                img = self.transform(img)
             if self.label_dir:
                 label = self.labels[idx]
             else:
                 label = -1
+            if label == 0:
+                for i in range(self.balance):
+                    data.append((img, label))
+                self.size += balance
             data.append((img, label))
+
         return data
 
     def __len__(self):
@@ -115,13 +127,14 @@ if __name__ == '__main__':
     #split_data(img_dir, label_dir, train_dir, dev_dir)
 
     print('loading datasets...')
-    train_set = CustomDataset(train_dir, label = True, transform = transform)
-    dev_set = CustomDataset(dev_dir, label = True, transform = transform)
-    test_set = CustomDataset(test_dir, label = False, transform = transform)
+    train_set = CustomDataset(train_dir, label = True, transform = None, debug = True)
+    print(np.asarray(train_set[0][0]).shape, train_set[0][1])
+    dev_set = CustomDataset(dev_dir, label = True, transform = transform, debug = True)
+    test_set = CustomDataset(test_dir, label = False, transform = transform, debug = True)
 
     train_loader = DataLoader(dataset = train_set, batch_size = batch_size, shuffle = True)
     dev_loader = DataLoader(dataset = dev_set, batch_size = batch_size, shuffle = True)
-    test_loader = DataLoader(dataset = test_set, batch_size = batch_size, shuffle = True)
+    test_loader = DataLoader(dataset = test_set, batch_size = batch_size, shuffle = False)
 
     for idx, batch in enumerate(test_loader):
         img, _ = batch

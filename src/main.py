@@ -29,7 +29,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps") # mps work
 C = 4
 input_ch = 3
 
-lr = 1e-3
+lr = 5e-3
 momentum = 0.9
 weight_decay = 1e-3
 
@@ -88,6 +88,8 @@ if __name__ == '__main__':
     parser.add_argument('--input_size', type = int, default = 64, help = 'size of input images')
     parser.add_argument('--train', type = bool, default = False, help = 'train the model or not. Use None for False.')
     parser.add_argument('--model', type = str, default = 'ResNet', help = 'model to use. options: ResNet, ViT')
+    parser.add_argument('--debug', type = bool, default = False, help = 'partially generate dataset')
+    parser.add_argument('--ensemble', type = int, default = 1, help = 'number of models for ensemble')
 
     args = parser.parse_args()
 
@@ -99,15 +101,24 @@ if __name__ == '__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
+    # transform = transforms.Compose([
+    #     transforms.Resize((args.input_size, args.input_size)), 
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    #     transforms.RandomHorizontalFlip(0.5),
+    #     transforms.RandomVerticalFlip(0.5),
+    #     transforms.ColorJitter(brightness = 0.5, hue = 0.5, contrast = 0.5)
+    # ])
+
     if args.train:
 
-        train_set = CustomDataset('../../data/train', label = True, transform = transform)
+        train_set = CustomDataset('../../data/train', label = True, transform = transform, debug = args.debug, balance = 3)
         train_loader = DataLoader(dataset = train_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
-        
-        dev_set = CustomDataset('../../data/dev', label = True, transform = transform)
+         
+        dev_set = CustomDataset('../../data/dev', label = True, transform = transform, debug = args.debug)
         dev_loader = DataLoader(dataset = dev_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
 
-    test_set = CustomDataset('../../data/test_imgs', label = False, transform = transform)
+    test_set = CustomDataset('../../data/test_imgs', label = False, transform = transform, debug = args.debug)
     test_loader = DataLoader(dataset = test_set, batch_size = args.batch_size, shuffle = False, drop_last = False)
 
     if args.model.lower() == 'resnet':
@@ -116,13 +127,13 @@ if __name__ == '__main__':
         model.maxpool = nn.MaxPool2d(kernel_size = 1, stride = 1, padding = 0)
 
     elif args.model.lower() == 'vit':
-        model = models.vision_transformer.vit_base_patch16_224(pretrained = False)
-        model.head = nn.Linear(model.head.in_features, C)
+        model = models.vit_b_16(image_size = args.input_size, num_classes = C)
 
     model = model.to(device)
 
     model_path = f'../../checkpoints/{args.model.lower()}.pth'
     acc_path = f'../../checkpoints/{args.model.lower()}_best.txt'
+    pred_path = f'../../checkpoints/{args.model.lower()}_pred.csv'
 
     if args.train:
     
@@ -146,7 +157,7 @@ if __name__ == '__main__':
             train_acc = eval(model, train_loader, device, predict = False)
             dev_acc = eval(model, dev_loader, device, predict = False)
 
-            print('epoch = {} | train acc = {}% | dev acc = {}%'.format(epoch, train_acc * 100, dev_acc * 100))
+            print('epoch = {} | loss = {} | train acc = {}% | dev acc = {}%'.format(epoch, loss, train_acc * 100, dev_acc * 100))
 
             if dev_acc > best_acc:
                 best_acc = dev_acc
@@ -159,4 +170,4 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(model_path))
 
     model.eval()
-    _ = eval(model, test_loader, device, predict = True, file_path = '../prediction.csv')
+    _ = eval(model, test_loader, device, predict = True, file_path = pred_path)
