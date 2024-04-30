@@ -95,30 +95,42 @@ if __name__ == '__main__':
 
     print('loading datasets...')
     
-    transform = transforms.Compose([
-        transforms.Resize((args.input_size, args.input_size)), 
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    # transform = transforms.Compose([
-    #     transforms.Resize((args.input_size, args.input_size)), 
-    #     transforms.ToTensor(),
-    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    #     transforms.RandomHorizontalFlip(0.5),
-    #     transforms.RandomVerticalFlip(0.5),
-    #     transforms.ColorJitter(brightness = 0.5, hue = 0.5, contrast = 0.5)
-    # ])
+    augmented_transforms = [
+        transforms.Compose([
+            transforms.Resize((args.input_size, args.input_size)), 
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ]),
+        transforms.Compose([
+            transforms.Resize((args.input_size, args.input_size)), 
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            transforms.RandomHorizontalFlip(0.5),
+            transforms.RandomVerticalFlip(0.5),
+        ]),
+        transforms.Compose([
+            transforms.RandomCrop((args.input_size, args.input_size)), 
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]),
+    ]
+    normal_transforms = [
+        transforms.Compose([
+            transforms.Resize((args.input_size, args.input_size)), 
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+    ]
 
     if args.train:
 
-        train_set = CustomDataset('../../data/train', label = True, transform = transform, debug = args.debug, balance = 3)
+        train_set = CustomDataset('../../data/train', label = True, transforms = augmented_transforms, debug = args.debug, balance = 3)
         train_loader = DataLoader(dataset = train_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
          
-        dev_set = CustomDataset('../../data/dev', label = True, transform = transform, debug = args.debug, balance = 0)
+        dev_set = CustomDataset('../../data/dev', label = True, transforms = normal_transforms, debug = args.debug, balance = 0)
         dev_loader = DataLoader(dataset = dev_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
 
-    test_set = CustomDataset('../../data/test_imgs', label = False, transform = transform, debug = args.debug, balance = 0)
+    test_set = CustomDataset('../../data/test_imgs', label = False, transforms = normal_transforms, debug = args.debug, balance = 0)
     test_loader = DataLoader(dataset = test_set, batch_size = args.batch_size, shuffle = False, drop_last = False)
 
     if args.model.lower() == 'resnet':
