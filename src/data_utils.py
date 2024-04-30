@@ -78,8 +78,9 @@ class CustomDataset(Dataset):
             self.labels = [int(line.strip()) for line in open(self.label_dir, 'r+').readlines()]
         else:
             self.label_dir = None
-        self.data = self._init_data()
         self.balance = balance
+        
+        self.data = self._init_data()
 
     def _init_data(self):
         data = []
@@ -88,14 +89,11 @@ class CustomDataset(Dataset):
             img = Image.open(img_path).convert('RGB')
             if self.transform:
                 img = self.transform(img)
-            if self.label_dir:
-                label = self.labels[idx]
-            else:
-                label = -1
+            label = self.labels[idx] if self.label_dir else -1
             if label == 0:
                 for i in range(self.balance):
                     data.append((img, label))
-                self.size += balance
+                self.size += self.balance
             data.append((img, label))
 
         return data

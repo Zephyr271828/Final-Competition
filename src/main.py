@@ -115,16 +115,14 @@ if __name__ == '__main__':
         train_set = CustomDataset('../../data/train', label = True, transform = transform, debug = args.debug, balance = 3)
         train_loader = DataLoader(dataset = train_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
          
-        dev_set = CustomDataset('../../data/dev', label = True, transform = transform, debug = args.debug)
+        dev_set = CustomDataset('../../data/dev', label = True, transform = transform, debug = args.debug, balance = 0)
         dev_loader = DataLoader(dataset = dev_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
 
-    test_set = CustomDataset('../../data/test_imgs', label = False, transform = transform, debug = args.debug)
+    test_set = CustomDataset('../../data/test_imgs', label = False, transform = transform, debug = args.debug, balance = 0)
     test_loader = DataLoader(dataset = test_set, batch_size = args.batch_size, shuffle = False, drop_last = False)
 
     if args.model.lower() == 'resnet':
-        model = models.resnet18(weights = None, num_classes = C)
-        model.conv1 = nn.Conv2d(input_ch, model.conv1.weight.shape[0], 3, 1, 1, bias = False)
-        model.maxpool = nn.MaxPool2d(kernel_size = 1, stride = 1, padding = 0)
+        model = CustomResNet(in_channels = input_ch, num_classes = C)
 
     elif args.model.lower() == 'vit':
         model = models.vit_b_16(image_size = args.input_size, num_classes = C)
