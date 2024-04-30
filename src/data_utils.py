@@ -69,21 +69,24 @@ def split_data(img_dir, label_dir, train_dir, dev_dir):
 class CustomDataset(Dataset):
     def __init__(self, img_dir, label = False, transforms = None, debug = False, balance = 0):
         self.img_dir = img_dir
+        self.transforms = transforms
+        self.balance = balance
         self.size = len([file for file in os.listdir(img_dir) if file.endswith('.png')])
         if debug:
             self.size = min(self.size, 640)
-        self.transforms = transforms
+        # number of files in the directory
+
         if label:
             self.label_dir = os.path.join(img_dir, 'labels.txt')
             self.labels = [int(line.strip()) for line in open(self.label_dir, 'r+').readlines()]
         else:
             self.label_dir = None
-        self.balance = balance
         
         self.data = self._init_data()
 
     def _init_data(self):
         data = []
+        tot_balance = 0
         for idx in tqdm(range(self.size)):
             img_path = os.path.join(self.img_dir, f'{idx}.png')
             img = Image.open(img_path).convert('RGB')
@@ -94,9 +97,11 @@ class CustomDataset(Dataset):
                 if label == 0:
                     for i in range(self.balance):
                         data.append((transformed_img, label))
-                    self.size += self.balance
+                    tot_balance += self.balance
                 data.append((transformed_img, label))
 
+        self.size = self.size * len(self.transforms) + tot_balance
+        # actual number of data in the dataset
         return data
 
     def __len__(self):
