@@ -1,5 +1,7 @@
 import os
 import sys
+import gzip
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -19,130 +21,107 @@ from configurations import *
 
 np.set_printoptions(threshold=sys.maxsize)
 
-def mp3_to_img(mp3_path, img_path):
-    # Load the MP3 file and extract audio data
-    y, sr = librosa.load(mp3_path)
+def load_data(mp3_dir, label_dir = None):
+    n_files = len([file for file in os.listdir(mp3_dir) if file.endswith('.mp3')])
+    if label_dir:
+        labels = [int(line.strip()) for line in open(label_dir, 'r+').readlines()]
+    else:
+        labels = [-1 for file in os.listdir(mp3_dir) if file.endswith('.mp3')]
 
-    # Convert the audio data into a spectrogram
-    spectrogram = librosa.feature.melspectrogram(y = y, sr = sr)
-
-    # Plot the spectrogram
-    plt.figure(figsize = (10, 10), dpi = 100)
-    librosa.display.specshow(librosa.power_to_db(spectrogram, ref = np.max))
-    plt.axis('off')
-
-    # Save the spectrogram as an image
-    plt.savefig(img_path, transparent = True)
-    plt.close()
-
-def init_img(mp3_dir, img_dir):
-
-    for mp3_name in tqdm(os.listdir(mp3_dir)):
-        if '._' in mp3_name:
-            mp3_path = os.path.join(mp3_dir, mp3_name)
-            os.remove(mp3_path)
-
-    for mp3_name in tqdm(os.listdir(mp3_dir)):
-        mp3_path = os.path.join(mp3_dir, mp3_name)
-
-        img_name = mp3_name.replace('.mp3', '.png')
-        img_path = os.path.join(img_dir, img_name)
-        mp3_to_img(mp3_path, img_path)
-
-def split_data(img_dir, label_dir, train_dir, dev_dir):
-    idx = np.arange(len(os.listdir(img_dir)))
-    train_idx, dev_idx = train_test_split(idx, test_size = 0.2, random_state = 42)
-    labels = [int(line.strip()) for line in open(label_dir, 'r+').readlines()]
-
-    for (new_dir, indices) in zip([train_dir, dev_dir], [train_idx, dev_idx]):
-        with open(os.path.join(new_dir, 'labels.txt'), 'w+') as f:
-            for new_idx, old_idx in enumerate(tqdm(indices)):
-
-                old_path = os.path.join(img_dir, f'{old_idx}.png')
-                img = Image.open(old_path)
-                label = labels[old_idx]
-
-                new_path = os.path.join(new_dir, f'{new_idx}.png')
-                img.save(new_path)
-                f.write(f'{label}\n')
+    data = []
+    for idx in tqdm(range(n_files)):
+        mp3_path = os.path.join(mp3_dir, f'{idx}.mp3')
+        y, sr = librosa.load(mp3_path)
+        img = librosa.feature.melspectrogram(y = y, sr = sr)
+        img = Image.fromarray(img)
+        label = labels[idx]
+        data.append((img, label))
+    
+    return data
 
 class CustomDataset(Dataset):
-    def __init__(self, img_dir, label = False, transforms = None, debug = False, balance = 0):
-        self.img_dir = img_dir
-        self.transforms = transforms
-        self.balance = balance
-        self.size = len([file for file in os.listdir(img_dir) if file.endswith('.png')])
-        if debug:
-            self.size = min(self.size, 640)
-        # number of files in the directory
+    def __init__(self, gz_dir, my_transforms = None, debug = False, balance = 0):
+        self.raw_data = self._init_data(gz_dir)
+        self.processed_data = self._process_data(my_transforms, debug, balance)    
 
-        if label:
-            self.label_dir = os.path.join(img_dir, 'labels.txt')
-            self.labels = [int(line.strip()) for line in open(self.label_dir, 'r+').readlines()]
-        else:
-            self.label_dir = None
-        
-        self.data = self._init_data()
+    def _init_data(self, gz_dir):
+        with gzip.open(gz_dir, 'rb') as f:
+            raw_data = pickle.load(f)
+        return raw_data
 
-    def _init_data(self):
-        data = []
-        tot_balance = 0
-        for idx in tqdm(range(self.size)):
-            img_path = os.path.join(self.img_dir, f'{idx}.png')
-            img = Image.open(img_path).convert('RGB')
-            label = self.labels[idx] if self.label_dir else -1
-            for transform in self.transforms:
-                transformed_img = transform(img)
-            
+    def _process_data(self, my_transforms, debug, balance):
+        processed_data = []
+        for data in tqdm(self.raw_data):
+            img, label = data
+            for transform in my_transforms:
+                tf_img = transform(img)
+
                 if label == 0:
-                    for i in range(self.balance):
-                        data.append((transformed_img, label))
-                    tot_balance += self.balance
-                data.append((transformed_img, label))
-
-        self.size = self.size * len(self.transforms) + tot_balance
-        # actual number of data in the dataset
-        return data
+                    for i in range(balance):
+                        processed_data.append((tf_img, label))
+                processed_data.append((tf_img, label))
+        return processed_data
 
     def __len__(self):
-        return self.size
+        return len(self.processed_data)
 
     def __getitem__(self, idx):
-        return self.data[idx]
+        return self.processed_data[idx]
 
 if __name__ == '__main__':
     split = 'train'
 
-    mp3_dir = f'../../data/{split}_mp3s'
-    img_dir = f'../../data/{split}_imgs'
+    
     label_dir = '../../data/train_label.txt'
-    print('initializing image data...')
+    gz_dir = '../../data/train.gz'
+    print('saving data to .gz file...')
     #init_img(mp3_dir, img_dir)
 
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)), 
-        transforms.ToTensor()
-    ])
+    # data = load_data(
+    #     mp3_dir = '../../data/train_mp3s', 
+    #     label_dir = '../../data/train_label.txt'
+    # )
+    
+    # train_idx, dev_idx = train_test_split(, test_size = 0.2, random_state = 42)
+    # train = [data[idx] for idx in train_idx]
+    # dev = [data[idx] for idx in dev_idx]
 
-    print('splitting dataset...')
-    train_dir = '../../data/train'
-    dev_dir = '../../data/dev'
-    test_dir = '../../data/test_imgs'
-    #split_data(img_dir, label_dir, train_dir, dev_dir)
+    # with gzip.open('../../data/train.gz', 'wb') as f:
+    #     pickle.dump(train, f)
 
-    print('loading datasets...')
-    train_set = CustomDataset(train_dir, label = True, transform = None, debug = True)
-    print(np.asarray(train_set[0][0]).shape, train_set[0][1])
-    dev_set = CustomDataset(dev_dir, label = True, transform = transform, debug = True)
-    test_set = CustomDataset(test_dir, label = False, transform = transform, debug = True)
+    # with gzip.open('../../data/dev.gz', 'wb') as f:
+    #     pickle.dump(dev, f)
 
-    train_loader = DataLoader(dataset = train_set, batch_size = batch_size, shuffle = True)
-    dev_loader = DataLoader(dataset = dev_set, batch_size = batch_size, shuffle = True)
-    test_loader = DataLoader(dataset = test_set, batch_size = batch_size, shuffle = False)
+    # test = load_data(
+    #     mp3_dir = '../../data/test_mp3s'
+    # )
 
-    for idx, batch in enumerate(test_loader):
-        img, _ = batch
-        print(img.shape)
-        break
+    # with gzip.open('../../data/test.gz', 'wb') as f:
+    #     pickle.dump(test, f)
+
+    my_transforms = [
+        transforms.Compose([
+            transforms.Resize((128, 128)), 
+            transforms.ToTensor(),
+            transforms.Normalize(0.5, 0.5)
+        ])
+    ]
+
+    print('reloading the data from .gz file...')
+    train_set = CustomDataset(
+        gz_dir = gz_dir,
+        my_transforms = my_transforms,
+        debug = False,
+        balance = 0
+    )
+
+    # train_loader = DataLoader(dataset = train_set, batch_size = batch_size, shuffle = True)
+    # dev_loader = DataLoader(dataset = dev_set, batch_size = batch_size, shuffle = True)
+    # test_loader = DataLoader(dataset = test_set, batch_size = batch_size, shuffle = False)
+
+    # for idx, batch in enumerate(test_loader):
+    #     img, _ = batch
+    #     print(img.shape)
+    #     break
     
         

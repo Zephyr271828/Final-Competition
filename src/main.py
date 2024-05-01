@@ -27,9 +27,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps") # mps work
 
 # hyper parameters
 C = 4
-input_ch = 3
+input_ch = 1
 
-lr = 5e-3
+lr = 1e-3
 momentum = 0.9
 weight_decay = 1e-3
 
@@ -52,7 +52,7 @@ def train(model, loader, criterion, optimizer, device):
     
     return avg_loss
     
-def eval(model, loader, device, predict = False, file_path = None):
+def eval(models, loader, device, predict = False, file_path = None):
     if predict:
         i = 0
         with open(file_path, 'w+') as f:
@@ -62,10 +62,15 @@ def eval(model, loader, device, predict = False, file_path = None):
         tot_corr = 0
         tot_num = 0
         
+        n = len(models)
         for x, label in tqdm(loader):
             x, label = x.to(device), label.to(device)
-            logits = model(x)
-            pred = logits.argmax(dim=1)
+            logits = torch.zeros((n, x.shape[0], C))
+            for idx, model in enumerate(models):
+                logits[idx, :, :] = model(x)
+
+            logits, _ = torch.max(logits, dim = 0)
+            pred = logits.argmax(dim=1).to(device)
 
             if predict:
                 with open(file_path, 'a+') as f:
@@ -95,89 +100,118 @@ if __name__ == '__main__':
 
     print('loading datasets...')
     
-    augmented_transforms = [
+    train_transforms = [
         transforms.Compose([
             transforms.Resize((args.input_size, args.input_size)), 
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize(0.5, 0.5)
         ]),
-        transforms.Compose([
-            transforms.Resize((args.input_size, args.input_size)), 
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            transforms.RandomHorizontalFlip(0.5),
-            transforms.RandomVerticalFlip(0.5),
-        ]),
-        transforms.Compose([
-            transforms.RandomCrop((args.input_size, args.input_size)), 
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]),
+        # transforms.Compose([
+        #     transforms.Resize((args.input_size, args.input_size)), 
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(0.5, 0.5),
+        #     transforms.RandomHorizontalFlip(0.5),
+        #     transforms.RandomVerticalFlip(0.5),
+        # ]),
+        # transforms.Compose([
+        #     transforms.RandomCrop((args.input_size, args.input_size)), 
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(0.5, 0.5),
+        # ]), 
     ]
-    normal_transforms = [
+    
+    test_transforms = [
         transforms.Compose([
             transforms.Resize((args.input_size, args.input_size)), 
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize(0.5, 0.5)
         ])
     ]
 
     if args.train:
 
-        train_set = CustomDataset('../../data/train', label = True, transforms = augmented_transforms, debug = args.debug, balance = 3)
+        train_set = CustomDataset(
+            gz_dir = '../../data/train.gz',
+            my_transforms = train_transforms,
+            debug = False,
+            balance = 0
+        )
         train_loader = DataLoader(dataset = train_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
-         
-        dev_set = CustomDataset('../../data/dev', label = True, transforms = normal_transforms, debug = args.debug, balance = 0)
+        
+        dev_set = CustomDataset(
+            gz_dir = '../../data/dev.gz',
+            my_transforms = test_transforms,
+            debug = False,
+            balance = 0
+        )
         dev_loader = DataLoader(dataset = dev_set, batch_size = args.batch_size, shuffle = True, drop_last = False)
 
-    test_set = CustomDataset('../../data/test_imgs', label = False, transforms = normal_transforms, debug = args.debug, balance = 0)
+    test_set = CustomDataset(
+        gz_dir = '../../data/test.gz',
+        my_transforms = test_transforms,
+        debug = False,
+        balance = 0
+    )
     test_loader = DataLoader(dataset = test_set, batch_size = args.batch_size, shuffle = False, drop_last = False)
 
     if args.model.lower() == 'resnet':
-        model = CustomResNet(in_channels = input_ch, num_classes = C)
+        models = [CustomResNet(in_channels = input_ch, num_classes = C) for i in range(args.ensemble)]
 
     elif args.model.lower() == 'vit':
-        model = models.vit_b_16(image_size = args.input_size, num_classes = C)
+        model = [models.vit_b_16(image_size = args.input_size, num_classes = C) for i in range(args.ensemble)]
 
-    model = model.to(device)
+    models = [model.to(device) for model in models]
 
-    model_path = f'../../checkpoints/{args.model.lower()}.pth'
-    acc_path = f'../../checkpoints/{args.model.lower()}_best.txt'
+    if args.ensemble > 1:
+        model_paths = [f'../../checkpoints/{args.model.lower()}_{i}.pth' for i in range(args.ensemble)]
+        acc_path = f'../../checkpoints/{args.model.lower()}_ensemble_best.txt'
+    else:
+        model_paths = [f'../../checkpoints/{args.model.lower()}.pth']
+        acc_path = f'../../checkpoints/{args.model.lower()}_best.txt'
     pred_path = f'../../checkpoints/{args.model.lower()}_pred.csv'
+
+    # for model, model_path in zip(models, model_paths):
+    #     model.eval()
+    #     model.load_state_dict(torch.load(model_path))
 
     if args.train:
     
         criterion = nn.CrossEntropyLoss().to(device)
-        optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, weight_decay = weight_decay)
-        scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones = [args.epochs // 3, args.epochs * 2 // 3], gamma = 0.1, last_epoch = -1)
-        #scheduler = None
+        optimizers = [optim.SGD(model.parameters(), lr = lr, momentum = momentum, weight_decay = weight_decay) for model in models]
+        schedulers = [optim.lr_scheduler.MultiStepLR(optimizer, milestones = [args.epochs // 3, args.epochs * 2 // 3], gamma = 0.1, last_epoch = -1) for optimizer in optimizers]
         with open(acc_path, 'r+') as f:
             best_acc = float(f.read().strip())
 
         for epoch in range(1, args.epochs + 1):
 
             print('training for epoch {}...'.format(epoch, ))
-            model.train()
-            loss = train(model, train_loader, criterion, optimizer, device)
-            if scheduler:
+            loss = 0.0
+            for model, optimizer, scheduler in zip(models, optimizers, schedulers):
+                model.train()
+                loss += train(model, train_loader, criterion, optimizer, device)
                 scheduler.step()
+            loss /= args.ensemble
 
             print('evaluating for epoch {}...'.format(epoch, ))
-            model.eval()
-            train_acc = eval(model, train_loader, device, predict = False)
-            dev_acc = eval(model, dev_loader, device, predict = False)
+            for model in models:
+                model.eval()
+            train_acc = eval(models, train_loader, device, predict = False)
+            dev_acc = eval(models, dev_loader, device, predict = False)
 
-            print('epoch = {} | loss = {} | train acc = {}% | dev acc = {}%'.format(epoch, loss, train_acc * 100, dev_acc * 100))
+            lr = schedulers[0].get_last_lr()[0]
+            print('epoch = {} | lr = {} | loss = {} | train acc = {}% | dev acc = {}%'.format(epoch, lr, loss, train_acc * 100, dev_acc * 100))
 
             if dev_acc > best_acc:
                 best_acc = dev_acc
                 with open(acc_path, 'w+') as f:
                     f.write(str(best_acc))
                 print('saving model parameters...')
-                torch.save(model.state_dict(), model_path)
+                for model, model_path in zip(models, model_paths):
+                    torch.save(model.state_dict(), model_path)
 
     print('generating predictions...')
-    model.load_state_dict(torch.load(model_path))
 
-    model.eval()
-    _ = eval(model, test_loader, device, predict = True, file_path = pred_path)
+    for model, model_path in zip(models, model_paths):
+        model.eval()
+        model.load_state_dict(torch.load(model_path))
+    _ = eval(models, test_loader, device, predict = True, file_path = pred_path)
