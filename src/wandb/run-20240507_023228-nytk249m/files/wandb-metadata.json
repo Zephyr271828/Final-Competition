@@ -1,0 +1,294 @@
+{
+    "os": "Linux-5.14.0-284.40.1.el9_2.x86_64-x86_64-with-glibc2.34",
+    "python": "3.9.19",
+    "heartbeatAt": "2024-05-07T06:32:29.558546",
+    "startedAt": "2024-05-07T06:32:28.972430",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--train=True",
+        "--model=resnet50",
+        "--input_ch=2",
+        "--extension=_vocal",
+        "--wandb=True"
+    ],
+    "state": "running",
+    "program": "/scratch/yx3038/24Spring/ML/Final-Competition/src/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "src/main.py",
+    "git": {
+        "remote": "https://github.com/Zephyr271828/Final-Competition.git",
+        "commit": "2d9bdd36b5652f0d58465f6db86c98001cef279f"
+    },
+    "email": "1689079482@qq.com",
+    "root": "/scratch/yx3038/24Spring/ML/Final-Competition",
+    "host": "gr001.hpc.nyu.edu",
+    "username": "yx3038",
+    "executable": "/scratch/yx3038/ml_env/bin/python",
+    "cpu_count": 48,
+    "cpu_count_logical": 48,
+    "cpu_freq": {
+        "current": 2932.8933333333334,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3660.139,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3648.886,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3666.952,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3740.107,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 1289.279,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2900.0,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 78.08685302734375,
+            "used": 21.935516357421875
+        }
+    },
+    "gpu": "Quadro RTX 8000",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Quadro RTX 8000",
+            "memory_total": 48318382080
+        }
+    ],
+    "memory": {
+        "total": 377.0627975463867
+    }
+}

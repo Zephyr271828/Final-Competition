@@ -1,6 +1,13 @@
+import autograd
+
+import torch
+import torch.nn.functional as F
 from torch import nn
 from torchvision import models
-import torch
+from torch.autograd import variable
+
+# device setting
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # mps works better than cpu on mac
 
 class BasicBlock(nn.Module):
     def __init__(
@@ -64,8 +71,6 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
 
         return  out
-
-
 
 class CustomResNet(nn.Module):
 
@@ -135,6 +140,55 @@ class CustomResNet(nn.Module):
         out = torch.flatten(out, 1)
         out = self.fc(out)
         return out
+
+class LSTMClassifier(nn.Module):
+
+    def __init__(
+        self, 
+        input_size, 
+        embed_size,
+        hidden_size, 
+        num_layers,
+        label_size, 
+        batch_size, 
+        bidirectional = False
+    ):
+        super(LSTMClassifier, self).__init__()
+        if bidirectional:
+            self.hidden_size = hidden_size // 2
+        else:
+            self.hidden_size = hidden_size
+        self.batch_size = batch_size
+        self.num_layers = num_layers
+
+        self.embedding = nn.Embedding(input_size, embed_size)
+        self.lstm = nn.LSTM(
+            input_size = embed_size, 
+            hidden_size = self.hidden_size, 
+            bidirectional = bidirectional
+        )
+        self.hidden2label = nn.Linear(hidden_size, label_size)
+        self.hidden = self.init_hidden()
+
+    def init_hidden(self):
+        return (
+            torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(device),
+            torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(device)
+        )
+
+    def forward(self, seq):
+
+        # embed = self.embedding(seq)
+        embed = seq
+
+        x = embed.view(embed.shape[1], self.batch_size , -1)
+
+        out, hidden = self.lstm(x, self.hidden)
+
+        y  = self.hidden2label(out[-1])
+
+        # log_probs = F.log_softmax(y)
+        return y
 
 if __name__ == '__main__':
     input_ch = 3
