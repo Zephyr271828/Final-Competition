@@ -29,6 +29,9 @@ torch.manual_seed(seed)
 # device setting
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # mps works better than cpu on mac
 
+# spleeter separator
+separator = Separator('spleeter:2stems')
+
 def separate(idx, mp3_dir, output_dir):
 
     audio_file = os.path.join(mp3_dir, f'{idx}.mp3')
